@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Amar Yasser — Direction 4 · Minimal Editorial</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400..700;1,9..144,400..700&family=Instrument+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#FDFDFB;--surface:#FFFFFF;--ink:#141412;--muted:#79766E;--line:#E8E6E0;
+--accent:#141412;--ok:#3D6B4F;--ok-bg:#EDF3EE;--warn:#8A6D3B;--warn-bg:#F5F0E4;--bad:#8B3A34;--bad-bg:#F7EAE8}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Instrument Sans',sans-serif;background:var(--bg);color:var(--ink);-webkit-font-smoothing:antialiased;font-size:14px}
+.app{display:flex;min-height:100vh}
+.sidebar{width:248px;flex-shrink:0;background:var(--surface);border-right:1px solid var(--line);display:flex;flex-direction:column;padding:28px 20px;position:sticky;top:0;height:100vh}
+.brand{padding-bottom:24px;border-bottom:1px solid var(--line);margin-bottom:20px}
+.mark{font-family:'Fraunces',serif;font-size:26px;font-weight:600;letter-spacing:.01em;line-height:1}
+.mark em{font-style:italic;font-weight:400}
+.brand span{display:block;font-size:11px;color:var(--muted);letter-spacing:.2em;text-transform:uppercase;margin-top:8px}
+nav{display:flex;flex-direction:column;flex:1}
+nav a{display:flex;align-items:baseline;gap:12px;padding:11px 4px;color:var(--muted);text-decoration:none;font-size:14px;border-bottom:1px solid transparent}
+nav a svg{width:15px;height:15px;stroke:currentColor;fill:none;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round;align-self:center}
+nav a:hover{color:var(--ink)}
+nav a.active{color:var(--ink);font-weight:600}
+nav a.active .idx{color:var(--ink)}
+.idx{font-size:11px;color:var(--muted);min-width:18px;font-variant-numeric:tabular-nums}
+.cnt{margin-left:auto;font-size:11px;color:var(--muted)}
+.side-foot{color:var(--muted);font-size:11px;padding-top:16px;border-top:1px solid var(--line)}
+.main{flex:1;min-width:0}
+.topbar{display:flex;align-items:center;gap:14px;padding:15px 34px;background:var(--surface);border-bottom:1px solid var(--line);position:sticky;top:0;z-index:5}
+.search{flex:1;max-width:440px;display:flex;align-items:center;gap:9px;border:0;border-bottom:1px solid var(--line);padding:7px 2px;color:var(--muted)}
+.search svg{width:15px;height:15px;stroke:currentColor;fill:none;stroke-width:1.5;stroke-linecap:round}
+.search input{border:0;outline:0;background:none;font:inherit;width:100%;color:var(--ink)}
+.top-actions{margin-left:auto;display:flex;align-items:center;gap:16px}
+.ghost{border:1px solid var(--ink);background:none;padding:7px 15px;font:inherit;font-size:12.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink);cursor:pointer}
+.ghost:hover{background:var(--ink);color:#fff}
+.date{font-size:12.5px;color:var(--muted)}
+.bell{position:relative;width:32px;height:32px;border:0;background:none;display:flex;align-items:center;justify-content:center;cursor:pointer}
+.bell svg{width:17px;height:17px;stroke:var(--ink);fill:none;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
+.bell i{position:absolute;top:5px;right:6px;width:6px;height:6px;border-radius:50%;background:var(--bad)}
+.page{padding:34px;max-width:1240px;width:100%}
+.page-head{display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:26px}
+h1{font-family:'Fraunces',serif;font-size:38px;font-weight:600;letter-spacing:-.01em}
+.page-head p{font-size:12.5px;color:var(--muted);margin-top:6px;letter-spacing:.14em;text-transform:uppercase}
+.btn{border:0;background:var(--ink);color:#fff;padding:10px 20px;font:inherit;font-size:12.5px;letter-spacing:.1em;text-transform:uppercase;cursor:pointer;display:inline-flex;align-items:center;gap:8px}
+.btn:hover{background:#000}
+.btn svg{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round}
+.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:0;border:1px solid var(--line);margin-bottom:14px}
+.kpi{padding:20px 22px;border-right:1px solid var(--line)}
+.kpi:last-child{border-right:0}
+.kpi .label{font-size:10.5px;letter-spacing:.18em;text-transform:uppercase;color:var(--muted)}
+.kpi .value{font-family:'Fraunces',serif;font-size:32px;font-weight:500;margin-top:10px}
+.kpi .sub{font-size:12px;color:var(--muted);margin-top:4px}
+.kpi .sub em{font-style:italic;color:var(--ok)}
+.lower{display:grid;grid-template-columns:308px 1fr;gap:14px;margin-bottom:14px}
+.card{background:var(--surface);border:1px solid var(--line)}
+.card-h{display:flex;align-items:baseline;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--line)}
+.card-h h2{font-family:'Fraunces',serif;font-size:19px;font-weight:600}
+.card-h a{font-size:11px;color:var(--muted);letter-spacing:.14em;text-transform:uppercase;text-decoration:none}
+.alert{display:flex;gap:11px;padding:13px 20px;border-bottom:1px solid var(--line)}
+.alert:last-child{border-bottom:0}
+.alert .dot{width:6px;height:6px;border-radius:50%;margin-top:7px;flex-shrink:0}
+.alert b{font-size:13.5px;font-weight:500;display:block}
+.alert span{font-size:12px;color:var(--muted);display:block;margin-top:2px}
+.chips{display:flex;gap:18px;padding:14px 20px;border-bottom:1px solid var(--line);flex-wrap:wrap}
+.chip{border:0;background:none;padding:0;font-size:12.5px;color:var(--muted);cursor:pointer;letter-spacing:.04em;font-family:inherit}
+.chip.on{color:var(--ink);font-weight:600;border-bottom:2px solid var(--ink);padding-bottom:2px}
+.table-wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;min-width:860px}
+th{text-align:left;font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);font-weight:500;padding:11px 20px;border-bottom:1px solid var(--line)}
+td{padding:12px 20px;border-bottom:1px solid var(--line);font-size:13.5px}
+tbody tr:last-child td{border-bottom:0}
+tbody tr:hover td{background:#FAFAF7}
+td.pno{color:var(--muted);font-size:12.5px}
+td b{font-weight:500}
+.sub{font-size:11.5px;color:var(--muted);margin-top:2px}
+td.qty{font-variant-numeric:tabular-nums;font-weight:500}
+td.price{font-variant-numeric:tabular-nums}
+.badge{display:inline-block;font-size:11px;padding:3px 10px;border-radius:999px;border:1px solid}
+.b-ok{color:var(--ok);border-color:#CBDCCF;background:var(--ok-bg)}
+.b-warn{color:var(--warn);border-color:#E0D3B4;background:var(--warn-bg)}
+.b-bad{color:var(--bad);border-color:#E2C8C4;background:var(--bad-bg)}
+.note{margin-top:28px;padding-top:16px;border-top:1px solid var(--line);display:flex;justify-content:space-between;font-size:11.5px;color:var(--muted)}
+.note .fx{font-family:'Fraunces',serif;font-style:italic;font-size:13px}
+@media(max-width:1100px){.kpis{grid-template-columns:repeat(2,1fr)}.kpi{border-bottom:1px solid var(--line)}.lower{grid-template-columns:1fr}}
+@media(max-width:860px){.sidebar{display:none}.date{display:none}}
+
+</style>
+</head>
+<body>
+<div class="app">
+<aside class="sidebar">
+  <div class="brand">
+    <div class="mark">Amar <em>Yasser</em></div>
+    <span style="letter-spacing:0;text-transform:none;font-size:12.5px">قطع غيار سيارات ألمانية</span>
+  </div>
+  <nav>
+    <a class="active" href="#"><span class="idx">01</span><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>Dashboard</a>
+    <a href="#"><span class="idx">02</span><svg viewBox="0 0 24 24"><path d="M21 8v8l-9 5-9-5V8l9-5 9 5z"/><path d="M3.3 8.3 12 13l8.7-4.7"/><path d="M12 13v8"/></svg>Parts<span class="cnt">412</span></a>
+    <a href="#"><span class="idx">03</span><svg viewBox="0 0 24 24"><path d="M8 3 4 7l4 4"/><path d="M4 7h16"/><path d="M16 21l4-4-4-4"/><path d="M20 17H4"/></svg>Movements</a>
+    <a href="#"><span class="idx">04</span><svg viewBox="0 0 24 24"><path d="M5 3h14v18l-2.3-1.6-2.3 1.6-2.4-1.6L9.6 21l-2.3-1.6L5 21V3z"/><path d="M9 8h6"/><path d="M9 12h6"/></svg>Sales</a>
+    <a href="#"><span class="idx">05</span><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.8-3.2 3.4-5 6.5-5s5.7 1.8 6.5 5"/><circle cx="17.5" cy="9" r="2.5"/><path d="M16 15.3c2.4.4 4.2 1.9 4.9 4.7"/></svg>Customers</a>
+    <a href="#"><span class="idx">06</span><svg viewBox="0 0 24 24"><path d="M4 20v-6"/><path d="M10 20V8"/><path d="M16 20v-9"/><path d="M2 20h20"/></svg>Reports</a>
+    <a href="#"><span class="idx">07</span><svg viewBox="0 0 24 24"><path d="M4 6h16"/><path d="M4 12h16"/><path d="M4 18h16"/><circle cx="9" cy="6" r="2"/><circle cx="15" cy="12" r="2"/><circle cx="7" cy="18" r="2"/></svg>Settings</a>
+  </nav>
+  <div class="side-foot">German Auto Parts · Egypt</div>
+</aside>
+<main class="main">
+<header class="topbar">
+  <div class="search"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><input placeholder="Search parts, OEM numbers, cars…"></div>
+  <div class="top-actions">
+    <span class="date">Wednesday, 9 April 2026</span>
+    <button class="ghost">العربية</button>
+    <button class="bell"><svg viewBox="0 0 24 24"><path d="M6 9a6 6 0 0 1 12 0c0 5 2 6.5 2 6.5H4S6 14 6 9z"/><path d="M10 19a2 2 0 0 0 4 0"/></svg><i></i></button>
+  </div>
+</header>
+<div class="page">
+  <div class="page-head">
+    <div><h1>Dashboard</h1><p>412 parts on hand — 7 need attention</p></div>
+    <button class="btn"><svg viewBox="0 0 24 24"><path d="M12 5v14"/><path d="M5 12h14"/></svg>New Sale</button>
+  </div>
+  <section class="kpis">
+    <div class="kpi"><div class="label">Stock Value</div><div class="value">EGP 1,284,600</div><div class="sub"><em>+2.4%</em> vs last month</div></div>
+    <div class="kpi"><div class="label">Today's Sales</div><div class="value">EGP 18,750</div><div class="sub">6 invoices</div></div>
+    <div class="kpi"><div class="label">Profit · This Month</div><div class="value">EGP 64,320</div><div class="sub"><em>+8.1%</em> vs last month</div></div>
+    <div class="kpi"><div class="label">Low Stock</div><div class="value">7 items</div><div class="sub">2 critical</div></div>
+  </section>
+    <section class="lower">
+    <div class="card">
+      <div class="card-h"><h2>Low stock alerts</h2><a href="#">View all</a></div>
+      <div class="alert"><span class="dot" style="background:var(--bad)"></span><div><b>Oil Filter Housing Gasket</b><span>11367585425 · out of stock · BMW X5 (F15)</span></div></div>
+      <div class="alert"><span class="dot" style="background:var(--warn)"></span><div><b>Air Suspension Strut</b><span>4H0616039N · 2 left · reorder at 3</span></div></div>
+      <div class="alert"><span class="dot" style="background:var(--warn)"></span><div><b>Brake Disc, Rear Pair</b><span>A0004201900 · 4 left · reorder at 5</span></div></div>
+    </div>
+    <div class="card">
+      <div class="card-h"><h2>Recent movements</h2><a href="#">View all</a></div>
+      <div class="alert"><span class="dot" style="background:var(--ok)"></span><div><b>IN 12 · Brake Pad Set, Front</b><span>34116794300 · today 10:24</span></div></div>
+      <div class="alert"><span class="dot" style="background:var(--bad)"></span><div><b>OUT 2 · LED Headlight, Right</b><span>63117382576 · today 09:41</span></div></div>
+      <div class="alert"><span class="dot" style="background:var(--bad)"></span><div><b>OUT 1 · Air Suspension Strut</b><span>4H0616039N · yesterday 17:05</span></div></div>
+      <div class="alert"><span class="dot" style="background:var(--warn)"></span><div><b>ADJ +2 · Shock Absorber, Front</b><span>13337183 · yesterday 12:30</span></div></div>
+    </div>
+  </section>
+  <section class="card">
+    <div class="card-h"><h2>Parts catalog</h2><a href="#">View all 412</a></div>
+    <div class="chips"><button class="chip on">All · 412</button><button class="chip">Braking · 96</button><button class="chip">Engine · 118</button><button class="chip">Suspension · 72</button><button class="chip">Electrical · 54</button><button class="chip">Ignition · 38</button><button class="chip">Other · 34</button></div>
+    <div class="table-wrap"><table>
+      <thead><tr><th>Part No</th><th>Part</th><th>Category</th><th>Qty</th><th>Location</th><th>Price</th><th>Status</th></tr></thead>
+      <tbody>
+        <tr><td class="pno">34116794300</td><td><b>Brake Pad Set, Front</b><div class="sub">BMW 3 Series (F30) · 2012–2019</div></td><td>Braking</td><td class="qty">24</td><td>A2-03</td><td class="price">EGP 2,150</td><td><span class="badge b-ok">In Stock</span></td></tr>
+        <tr><td class="pno">A0004201900</td><td><b>Brake Disc, Rear Pair</b><div class="sub">Mercedes C-Class (W205) · 2014–2021</div></td><td>Braking</td><td class="qty">4</td><td>A2-07</td><td class="price">EGP 3,800</td><td><span class="badge b-warn">Low</span></td></tr>
+        <tr><td class="pno">07K905715F</td><td><b>Ignition Coil</b><div class="sub">VW Touareg · Audi Q7 (3.6 FSI)</div></td><td>Ignition</td><td class="qty">36</td><td>B1-01</td><td class="price">EGP 950</td><td><span class="badge b-ok">In Stock</span></td></tr>
+        <tr><td class="pno">11367585425</td><td><b>Oil Filter Housing Gasket</b><div class="sub">BMW X5 (F15) · 2014–2018</div></td><td>Engine</td><td class="qty">0</td><td>B1-04</td><td class="price">EGP 640</td><td><span class="badge b-bad">Out of Stock</span></td></tr>
+        <tr><td class="pno">4H0616039N</td><td><b>Air Suspension Strut</b><div class="sub">Audi A6 (C7) · 2012–2018</div></td><td>Suspension</td><td class="qty">2</td><td>C3-02</td><td class="price">EGP 14,500</td><td><span class="badge b-warn">Low</span></td></tr>
+        <tr><td class="pno">0242129513</td><td><b>Spark Plug Set</b><div class="sub">VW Golf (Mk7) · 2013–2020</div></td><td>Engine</td><td class="qty">60</td><td>B2-01</td><td class="price">EGP 480</td><td><span class="badge b-ok">In Stock</span></td></tr>
+        <tr><td class="pno">13337183</td><td><b>Shock Absorber, Front</b><div class="sub">Opel Astra (K) · 2016–2021</div></td><td>Suspension</td><td class="qty">8</td><td>C3-05</td><td class="price">EGP 2,950</td><td><span class="badge b-ok">In Stock</span></td></tr>
+        <tr><td class="pno">63117382576</td><td><b>LED Headlight, Right</b><div class="sub">BMW 5 Series (G30) · 2017–2022</div></td><td>Electrical</td><td class="qty">3</td><td>D1-02</td><td class="price">EGP 8,200</td><td><span class="badge b-ok">In Stock</span></td></tr>
+      </tbody>
+    </table></div>
+  </section>
+  <footer class="note"><span>Amar Yasser — German Auto Parts · Egypt</span><span class="fx">Direction 4 of 4 · Minimal Editorial</span></footer>
+
+</div>
+</main>
+</div>
+
+</body>
+</html>

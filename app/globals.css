@@ -1,26 +1,127 @@
 @import "tailwindcss";
 
+/*
+ * AMAR YASSER — Design Tokens
+ * Identity: "German Engineering" (locked by owner)
+ * Graphite neutrals + signal-yellow accent. 1px borders, no glow, no gradients.
+ */
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --bg: #F2F2F0;
+  --surface: #FFFFFF;
+  --ink: #16181A;
+  --muted: #6B7075;
+  --line: #E1E2E0;
+  --hover: #FAFAF9;
+
+  --accent: #F0B429;
+  --accent-ink: #16181A;
+
+  --ok: #2F7D4F;
+  --ok-bg: #E7F2EB;
+  --warn: #A97014;
+  --warn-bg: #FBF3E1;
+  --bad: #B3392E;
+  --bad-bg: #F9E9E7;
+
+  --side-bg: #1B1E21;
+  --side-ink: #A7ACB2;
+  --side-on: #FFFFFF;
+  --side-line: #2B2F33;
+  --side-hover: #23272B;
+  --side-active: #2A2E33;
+}
+
+[data-theme="dark"] {
+  --bg: #131517;
+  --surface: #1C1F22;
+  --ink: #ECEDEA;
+  --muted: #8F959B;
+  --line: #2B2F33;
+  --hover: #212528;
+
+  --accent: #F0B429;
+  --accent-ink: #16181A;
+
+  --ok: #6FBF8E;
+  --ok-bg: #1E2A23;
+  --warn: #D9A441;
+  --warn-bg: #2A2415;
+  --bad: #E07B6E;
+  --bad-bg: #2E1D1A;
+
+  --side-bg: #0F1113;
+  --side-ink: #8F959B;
+  --side-on: #FFFFFF;
+  --side-line: #23272B;
+  --side-hover: #1C1F22;
+  --side-active: #24282C;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-ink: var(--ink);
+  --color-muted: var(--muted);
+  --color-line: var(--line);
+  --color-hover: var(--hover);
+  --color-accent: var(--accent);
+  --color-accent-ink: var(--accent-ink);
+  --color-ok: var(--ok);
+  --color-ok-bg: var(--ok-bg);
+  --color-warn: var(--warn);
+  --color-warn-bg: var(--warn-bg);
+  --color-bad: var(--bad);
+  --color-bad-bg: var(--bad-bg);
+  --color-side-bg: var(--side-bg);
+  --color-side-ink: var(--side-ink);
+  --color-side-on: var(--side-on);
+  --color-side-line: var(--side-line);
+  --color-side-hover: var(--side-hover);
+  --color-side-active: var(--side-active);
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --font-sans: var(--font-plex-sans), var(--font-plex-arabic), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-plex-mono), ui-monospace, "Cascadia Mono", monospace;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--bg);
+  color: var(--ink);
 }
+
+/* Arabic interface: switch to IBM Plex Sans Arabic for proper glyph shaping */
+html[lang="ar"] body {
+  font-family: var(--font-plex-arabic), var(--font-plex-sans), ui-sans-serif, system-ui, sans-serif;
+}
+
+/* Keep Western digits everywhere (owner requirement) */
+html {
+  font-variant-numeric: lining-nums;
+}
+
+::selection {
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+
+/* ---------- Print documents (Phase 5) ---------- */
+@page {
+  margin: 12mm;
+}
+
+@media print {
+  .no-print {
+    display: none !important;
+  }
+  body {
+    background: #fff !important;
+  }
+  .print-sheet {
+    border: none !important;
+    box-shadow: none !important;
+    margin: 0 auto !important;
+    max-width: none !important;
+  }
+}
+
+
