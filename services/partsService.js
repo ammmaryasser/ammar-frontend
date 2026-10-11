@@ -1,6 +1,6 @@
 ﻿// Parts service — live API (Phase 9). Same exports/shapes as the mock.
 import { api, loadBrands, loadCategories, apiPartToVM } from "@/lib/api";
-import { stockStatus } from "@/lib/data";
+import { stockStatus } from "@/lib/api";
 
 async function withRefs(p) {
   const [brands, categories] = await Promise.all([loadBrands(), loadCategories()]);
@@ -26,6 +26,7 @@ export async function getPart(id) {
 
 export async function savePart(payload) {
   const body = {
+    version: payload.version,
     oem: payload.oem,
     nameEn: payload.name,
     nameAr: payload.nameAr || "",

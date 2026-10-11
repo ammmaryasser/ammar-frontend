@@ -1,8 +1,10 @@
 "use client";
+import {useResource} from "@/lib/useResource";
+import ResourceState from "@/components/ui/ResourceState";
 
-import { Suspense, useCallback, useEffect, useState } from "react";
+import { Suspense, useState } from "react";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import { Plus, Eye, Banknote, Printer, FileText } from "lucide-react";
 import Modal from "@/components/ui/Modal";
 import NewSaleModal from "@/components/app/NewSaleModal";
@@ -13,37 +15,40 @@ import { getSales } from "@/services/salesService";
 export default function SalesPage() {
   return (
     <Suspense fallback={null}>
-      <SalesInner />
+      <SalesRoute />
     </Suspense>
   );
 }
 
+function SalesRoute() {
+  const searchParams = useSearchParams();
+  return <SalesInner key={searchParams.toString()}/>;
+}
+
 function SalesInner() {
+  const router = useRouter();
   const { t } = useLang();
   const searchParams = useSearchParams();
-  const [sales, setSales] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const {data, loading, error, reload: load} = useResource(getSales);
+  const sales = data ?? [];
   const [detail, setDetail] = useState(null);
-  const [newOpen, setNewOpen] = useState(false);
+  const [newOpen, setNewOpen] = useState(() => searchParams.get("new") === "1");
+  function closeNewSale() {
+    setNewOpen(false);
+    if (searchParams.get("new") === "1") {
+      const next = new URLSearchParams(searchParams.toString()); next.delete("new");
+      router.replace("/sales" + (next.size ? "?" + next.toString() : ""));
+    }
+  }
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    setSales(await getSales());
-    setLoading(false);
-  }, []);
-  useEffect(() => {
-    load();
-  }, [load]);
 
-  // Open the New Sale modal when arriving from the topbar button
-  useEffect(() => {
-    if (searchParams.get("new") === "1") setNewOpen(true);
-  }, [searchParams]);
+
 
   const revenue = sales.reduce((sum, s) => sum + s.total, 0);
 
   return (
     <div className="space-y-5 max-w-[1400px]">
+      <ResourceState error={error} retry={load}/>
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -131,9 +136,9 @@ function SalesInner() {
 
       <NewSaleModal
         open={newOpen}
-        onClose={() => setNewOpen(false)}
+        onClose={closeNewSale}
         onSaved={() => {
-          setNewOpen(false);
+          closeNewSale();
           load();
         }}
       />
@@ -155,6 +160,7 @@ function StatusPill({ status, t }) {
 }
 
 function InvoiceModal({ sale, t, onClose }) {
+  const {isAr} = useLang();
   return (
     <Modal open onClose={onClose} title={sale.id} wide>
       <div className="p-5 space-y-4">

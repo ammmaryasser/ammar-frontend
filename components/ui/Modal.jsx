@@ -20,13 +20,14 @@ export default function Modal({ open, onClose, title, children, wide }) {
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto p-4 sm:p-8">
       <div className="fixed inset-0 bg-black/50" onClick={onClose} />
-      <div
+      <div role="dialog" aria-modal="true" aria-label={title}
         className={`relative w-full ${wide ? "max-w-2xl" : "max-w-md"} bg-surface rounded-lg border border-line shadow-xl`}
       >
         <div className="flex items-center justify-between px-5 py-4 border-b border-line">
           <h3 className="text-sm font-semibold">{title}</h3>
           <button
             onClick={onClose}
+            aria-label="Close"
             className="flex items-center justify-center w-7 h-7 rounded-md text-muted hover:bg-hover hover:text-ink transition-colors"
           >
             <X size={15} strokeWidth={2} />

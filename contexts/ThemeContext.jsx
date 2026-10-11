@@ -1,23 +1,19 @@
 "use client";
 
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useContext, useEffect } from "react";
+
+import {usePreference} from "@/lib/preferences";
 
 const ThemeContext = createContext(null);
 
 export function ThemeProvider({ children }) {
-  const [theme, setTheme] = useState("light");
-
-  useEffect(() => {
-    const saved = localStorage.getItem("ay-theme");
-    if (saved === "dark" || saved === "light") setTheme(saved);
-  }, []);
+  const [theme, setTheme] = usePreference("ay-theme", "light", ["light", "dark"]);
 
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
-    localStorage.setItem("ay-theme", theme);
   }, [theme]);
 
-  const toggle = () => setTheme((t) => (t === "light" ? "dark" : "light"));
+  const toggle = () => setTheme(theme === "light" ? "dark" : "light");
   const set = (v) => setTheme(v === "dark" ? "dark" : "light");
 
   return (

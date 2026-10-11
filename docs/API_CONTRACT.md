@@ -1,244 +1,75 @@
-# AMAR YASSER — Frontend ↔ Backend API Contract
+# AMAR API contract
 
-Target backend: **Spring Boot (Java)**. This document defines every REST endpoint the
-frontend needs, with exact JSON shapes. The frontend's service layer
-(`services/*.js`) is a thin mock implementation of these functions — when the real
-API exists, only those function bodies change to `fetch()` calls. Nothing in the
-pages/components touches HTTP directly.
+Updated 2026-10-09. Backend and frontend must be released together: PUT part updates now require the revision returned by GET. This document is copied unchanged into the frontend docs directory.
 
-## Conventions
+Browser requests use relative `/api` paths. Next.js forwards them to `BACKEND_INTERNAL_URL` (local `http://localhost:8081`; Compose `http://app:8080`). Protected endpoints require the Spring `SESSION` cookie. All writes, including login/logout, echo the readable `XSRF-TOKEN` cookie in `X-XSRF-TOKEN`.
 
-- **Base URL:** `/api` (configure via `NEXT_PUBLIC_API_BASE_URL`).
-- **Content type:** `application/json; charset=UTF-8`.
-- **Dates:** ISO `yyyy-MM-dd` (no time component anywhere in this app).
-- **Money:** integers or decimals in **EGP**. No currency field — the app is EGP-only.
-- **Numbers:** always Western digits in JSON.
-- **IDs:** strings as shown in the mock data (`P-9001`, `INV-2281`, `C-601`).
-  Spring may use longs/UUIDs — any string-safe ID works; the frontend never parses them.
-- **Error format** (all non-2xx responses):
+## Resources
 
-```json
-{
-  "status": 400,
-  "error": "INSUFFICIENT_STOCK",
-  "message": "Insufficient stock for P-9003 (2 left)",
-  "field": null
-}
-```
+| Endpoint | Result / write contract |
+| --- | --- |
+| GET /api/auth/csrf | `{headerName, parameterName, token}`; public and initializes CSRF cookie |
+| POST /api/auth/login | `{username,password}` → `{username}`; rotates session |
+| GET /api/auth/me | `{username}` or 401 |
+| POST /api/auth/logout | 204 and revokes session |
+| GET /api/brands | `[{id,name,models:[]}]` |
+| GET /api/categories | `[{id,nameEn,nameAr}]` |
+| GET /api/parts | Complete Part array |
+| GET /api/parts/{id} | Part or 404 |
+| POST /api/parts | PartInput → 201 Part; version optional on creation |
+| PUT /api/parts/{id} | PartInput with required nonnegative `version` → 200 Part; stale version → 409 |
+| DELETE /api/parts/{id} | 204; invoice and movement history survive |
+| GET /api/movements | Complete array, newest business date then ID descending; no silent row limit |
+| POST /api/movements/stock-in | `{partId,qty,ref?}` positive qty → 200 updated Part |
+| POST /api/movements/adjustments | `{partId,delta,ref?}` signed nonzero delta → 200 updated Part |
+| GET /api/customers | Complete Customer array |
+| POST /api/customers | `{name,phone?,car?,notes?}` → 201 Customer |
+| GET /api/sales | Complete Sale array, newest creation time then ID descending |
+| GET /api/sales/{id} | Sale or 404 |
+| POST /api/sales | `{customerId,items:[{partId,qty}]}` → 201 Sale; positive qty; duplicate parts aggregated |
+| GET /api/dashboard/summary | `{partsOnHand,stockValue,todaysSales,invoicesToday,monthProfit,lowStock,critical}` |
+| GET /api/settings | Settings singleton |
+| PUT /api/settings | Partial Settings fields → 200 full Settings; unspecified fields retained |
 
-`field` is set only for validation errors (400) and names the request field that failed.
+Part: `{id,version,oem,nameEn,nameAr,brandId,categoryId,fitment:[],quantity,reorderAt,location,cost,price,priceHistory:[],stockLog:[]}`.
 
-## Entities
+PartInput: `{version?,oem,nameEn,nameAr?,brand,category,fitment:[],quantity,reorderAt,location?,cost,price}`. Brand/category accept existing reference IDs or their names. `oem` and English name are required. Numeric stock/reorder/cost/price values are nonnegative. `version` is required for PUT; omit it for POST. Every successful change returns the current flushed revision. Stale updates leave stock, price and history unchanged; keep the draft and offer explicit reload instead of automatic retry.
 
-These mirror `lib/db.js` — the single source of truth for the frontend's expectations.
+Price history row: `{d,p}`. Part stock-log row: `{d,t,q,ref}`. Stock-log OUT uses a positive absolute `q` for this existing contract; the display converts it to a negative quantity. Movement row: `{id,date,partId,t,q,ref}` with signed q (IN positive, OUT negative, ADJ either). Dates are ISO calendar dates. Preserve backend ordering and show actual dates. Unrecognized types get a neutral icon/label.
 
-**Part**
+Customer: `{id,name,phone,car,notes}`; optional strings serialize as blanks.
 
-```json
-{
-  "id": "P-9001",
-  "oem": "34116794300",
-  "nameEn": "Front Brake Pads Set",
-  "nameAr": "طقم فحمات فرامل أمامي",
-  "brandId": "BMW",
-  "categoryId": "brakes",
-  "fitment": ["3 Series F30 (2012–2019)", "4 Series F32 (2013–2020)"],
-  "quantity": 14,
-  "reorderAt": 4,
-  "location": "A1-03",
-  "cost": 1450,
-  "price": 2400,
-  "priceHistory": [{ "d": "2026-07-01", "p": 2400 }],
-  "stockLog": [{ "d": "2026-08-12", "t": "IN", "q": 20, "ref": "SHIP-121" }]
-}
-```
+Sale: `{id,date,customerId,status,items:[]}`. Status is PAID or PENDING; new sales are PAID. Each item: `{partId,qty,unitPrice,unitCost,nameEn,nameAr,oem,brandId,brand}`. Item descriptions, OEM, brand and money are immutable sale-time snapshots. Financial totals derive from these items. The item keeps its part ID after catalog deletion. Part/sale money fields retain existing decimal-string serialization; report totals are JSON numbers. Currency is EGP.
 
-- `t` in `stockLog`: `"IN" | "OUT" | "ADJ"`; `q` is signed for ADJ, positive for IN/OUT.
-- The frontend derives stock status client-side: `0 → out`, `≤ reorderAt → low`, else `ok`.
+Settings: `{shopNameEn,shopNameAr,phone,addressEn,addressAr,taglineEn,taglineAr}`; all strings. The API is authoritative across browsers. Browser legacy settings can be previewed and explicitly imported; no automatic import and the browser copy is kept. Theme/language remain local preferences.
 
-**Customer**
+## Reports
+
+GET `/api/reports/overview?range=month|30d|all` returns:
 
 ```json
-{
-  "id": "C-601",
-  "name": "Mostafa Kamel",
-  "phone": "01005551234",
-  "car": "BMW 320i F30",
-  "notes": ""
-}
+{"range":"month","from":"2026-10-01","to":"2026-10-09","revenue":0,"profit":0,"units":0,"invoices":0,"avgMargin":0,"monthly":[],"bestSellers":[],"brands":[]}
 ```
 
-**Sale** (server computes totals; frontend recomputes defensively but trusts the server)
+Dates are resolved once using the configured Cairo business clock. Month = month start through today. 30d = 30 calendar dates ending today. All = earliest sale through today; empty data starts today. Monthly rows are zero-filled across the selected interval: `{month:"YYYY-MM",revenue,profit}`. Sellers are top 10 by quantity: `{partId,name,nameAr,oem,brand,qty,revenue,profit,margin}`. Descriptions come from the latest invoice snapshot within the range; missing English name displays the retained part ID. Brand rows are `{brand,units,revenue,profit,share}` ordered by revenue. Percentage values are rounded integers and zero for zero revenue. Later catalog edits/deletion cannot move historical brand revenue.
 
-```json
-{
-  "id": "INV-2281",
-  "date": "2026-09-05",
-  "customerId": "C-601",
-  "status": "PAID",
-  "items": [
-    { "partId": "P-9001", "qty": 2, "unitPrice": 2400, "unitCost": 1450 }
-  ]
-}
-```
+Existing report endpoints remain available with `from` and `to` ISO dates; missing dates use the current business month (through month end):
 
-- `status`: `"PAID" | "PENDING"` — walk-in sales are recorded as PAID.
-- `unitCost` is snapshotted at sale time so historical profit stays correct when costs change.
+- `/api/reports/monthly`: `[{month,revenue,profit}]`, zero-filled.
+- `/api/reports/best-sellers`: `[{partId,qty,revenue,profit}]`, top 10 by quantity.
+- `/api/reports/brands`: `[{brand,units,revenue}]`, snapshot grouping.
+- `/api/reports/summary`: `{units,invoices,revenue,profit,avgMargin}`.
 
-**Brand / Category** (reference data)
+Invalid range/dates or from > to return 400 VALIDATION.
 
-```json
-{ "id": "BMW", "name": "BMW", "models": ["1 Series F20", "3 Series F30"] }
-{ "id": "brakes", "nameEn": "Brakes", "nameAr": "الفرامل" }
-```
+## Errors and authentication
 
-## Endpoints
+Every error envelope is `{status,error,message,field}`; field may be null. Codes: 400 VALIDATION / INSUFFICIENT_STOCK / NEGATIVE_STOCK, 401 UNAUTHORIZED, 403 CSRF_INVALID / FORBIDDEN, 404 NOT_FOUND, 409 CONFLICT, 429 RATE_LIMITED, 500 INTERNAL.
 
-### Reference data
+Only an explicit 403 CSRF_INVALID may trigger token refresh and one replay. Network-failed writes are never replayed automatically. Protected 401 clears user-specific caches and returns to login with a validated local return path. Connectivity failure is distinct from credential/session failure. CSRF and reference fetch promises recover after rejection.
 
-| Method | Path | Notes |
-|---|---|---|
-| GET | `/api/brands` | `Brand[]` |
-| GET | `/api/categories` | `Category[]` |
+Five consecutive bad passwords persistently lock the account for 15 minutes. Successful login resets failures. Concurrent failures serialize on the account row. Throttling is five attempts per minute per socket address/username; forwarded headers are ignored. The proxy address intentionally becomes the address key. Buckets expire after 10 idle minutes with a 10,000 entry bound. Session cookie: HttpOnly, SameSite=Lax, Path=/, Secure in prod. CSRF cookie: readable, SameSite=Lax, Path=/, Secure in prod.
 
-### Dashboard
+## Migration limits
 
-| Method | Path | Notes |
-|---|---|---|
-| GET | `/api/dashboard/summary` | KPI block (see shape below) |
-
-```json
-{
-  "partsOnHand": 1847,
-  "stockValue": 214850,
-  "todaysSales": 18200,
-  "invoicesToday": 2,
-  "monthProfit": 64200,
-  "lowStock": 5,
-  "critical": 1
-}
-```
-
-(`stockDelta` / `profitDelta` percentages are computed client-side against the
-reports endpoints; not required here.)
-
-### Parts
-
-| Method | Path | Body / Params | Returns |
-|---|---|---|---|
-| GET | `/api/parts` | — | `Part[]` |
-| GET | `/api/parts/{id}` | — | `Part` (404 if missing) |
-| POST | `/api/parts` | `PartInput` | `Part` (201) |
-| PUT | `/api/parts/{id}` | `PartInput` | `Part` |
-| DELETE | `/api/parts/{id}` | — | 204. Server keeps movement history. |
-
-`PartInput` = `Part` without `id`, `priceHistory`, `stockLog`. Editing `quantity`
-directly is allowed only for the owner's manual entry — it must also append an
-`ADJ` row to `stockLog` server-side.
-
-Search/filtering is done client-side for now (catalog is a few hundred parts).
-If it grows: `GET /api/parts?q=&brand=&category=&status=&page=&size=` returning
-`{ "content": Part[], "total": 250 }` — to be agreed before implementation.
-
-### Movements
-
-| Method | Path | Body | Returns |
-|---|---|---|---|
-| GET | `/api/movements` | — | `StockMovement[]` (newest first) |
-| POST | `/api/movements/stock-in` | `{ "partId": "P-9001", "qty": 10, "ref": "SHIP-121" }` | `Part` (updated) — 404 unknown part, 400 bad qty |
-| POST | `/api/movements/adjustments` | `{ "partId": "P-9001", "delta": -2, "ref": "damaged box" }` | `Part` (updated) — 400 if result would be negative |
-
-Both must be **transactional**: update `quantity`, append to `stockLog`, insert
-`StockMovement` row, all or nothing.
-
-### Sales
-
-| Method | Path | Body | Returns |
-|---|---|---|---|
-| GET | `/api/sales` | — | `Sale[]` (newest first) |
-| GET | `/api/sales/{id}` | — | `Sale` (404 if missing) |
-| POST | `/api/sales` | `CreateSale` (below) | `Sale` (201) |
-
-`CreateSale`:
-
-```json
-{
-  "customerId": "C-601",
-  "items": [{ "partId": "P-9001", "qty": 2 }]
-}
-```
-
-Server-side **in one transaction**:
-1. Validate every part exists and `quantity >= qty` → else `400 INSUFFICIENT_STOCK`
-   (must not partially apply).
-2. Decrement quantities, append `OUT` rows to each part's `stockLog`, insert
-   `StockMovement` rows with `ref = saleId`.
-3. Snapshot `unitPrice`/`unitCost` from the part at sale time (price changes must
-   not rewrite old invoices).
-4. Persist sale with `status: "PAID"` (default; status is display-only for now).
-
-  "items": [
-    { "partId": "P-9001", "qty": 2, "unitPrice": 2400, "unitCost": 1450 }
-  ]
-}
-```
-
-**StockMovement** (write-only for the client except listing)
-
-```json
-{ "id": 42, "date": "2026-09-05", "partId": "P-9001", "t": "OUT", "q": -2, "ref": "INV-2281" }
-```
-
-### Customers
-
-| Method | Path | Body | Returns |
-|---|---|---|---|
-| GET | `/api/customers` | — | `Customer[]` |
-| POST | `/api/customers` | `{ "name": "...", "phone": "...", "car": "...", "notes": "..." }` | `Customer` (201). Only `name` required. |
-
-Purchase counts / totals per customer are computed client-side from `/api/sales`.
-
-### Reports
-
-| Method | Path | Params | Returns |
-|---|---|---|---|
-| GET | `/api/reports/monthly` | `from=yyyy-MM-dd&to=yyyy-MM-dd` | `[{ "month": "2026-07", "revenue": 182000, "profit": 61200 }]` (one row per month in range) |
-| GET | `/api/reports/best-sellers` | `from&to` | Top 10: `{ "partId": "P-9001", "qty": 38, "revenue": 91200, "profit": 36100 }` |
-| GET | `/api/reports/brands` | `from&to` | `[{ "brand": "BMW", "units": 44, "revenue": 128000 }]` (sorted desc) |
-
-`partId` rows must be joined with part names/OEMs by the client (it already has
-the catalog loaded).
-
-## Error codes the frontend distinguishes
-
-| HTTP | `error` | Frontend behavior |
-|---|---|---|
-| 400 | `VALIDATION` | Red field highlight (`field` names the input) |
-| 400 | `INSUFFICIENT_STOCK` | Message shown in the New Sale / movement modal |
-| 400 | `NEGATIVE_STOCK` | Shown in the adjustment modal |
-| 404 | `NOT_FOUND` | "Not found" page/empty state |
-| 500 | — | Generic error toast (to be added with the API) |
-
-## Frontend service mapping
-
-Each mock function → endpoint:
-
-| Service file | Function | Endpoint |
-|---|---|---|
-| `partsService.js` | `getParts` / `getPart` / `savePart` / `deletePart` | Parts endpoints above |
-| `movementsService.js` | `getMovements` / `recordStockIn` / `recordAdjustment` | Movements endpoints |
-| `salesService.js` | `getSales` / `getSaleById` / `createSale` | Sales endpoints |
-| `customersService.js` | `getCustomers` / `createCustomer` | Customers endpoints |
-| `reportsService.js` | `getReport(range)` | `/api/reports/*` |
-
-The planned swap: introduce `lib/api.js` with a `request(path, options)` helper
-(base URL, JSON headers, error normalization) and replace mock bodies one file at
-a time. UI code stays untouched.
-
-## Deliberately out of scope
-
-- **Authentication** — single-owner system; if needed later, add a session cookie
-  or JWT and prefix all routes (contract shapes unchanged).
-- **Image upload** — the part form has the upload tile stubbed; add
-  `POST /api/parts/{id}/photo` (multipart) when the backend lands.
-- **Pagination** — catalog is a few hundred parts; see the Parts note above.
+Flyway V1/V2 are unchanged. V3 adds part versions and sale-item descriptions/brands; V4 adds taglines. Existing invoices are backfilled from available catalog records at migration time. Earlier descriptions/brand assignments cannot always be recovered. For missing parts, descriptions/OEM/brand ID stay blank and brand is Unknown; financial snapshots and IDs are preserved. Take and validate a backup and isolated restore before running these migrations on the shop database.

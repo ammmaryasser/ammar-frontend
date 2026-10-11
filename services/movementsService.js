@@ -1,3 +1,4 @@
+import {movementToVM} from "@/lib/movementModel";
 // Movements service — live API (Phase 9). Same exports/shapes as the mock.
 import { api, loadBrands, loadCategories, apiPartToVM } from "@/lib/api";
 
@@ -8,33 +9,10 @@ async function withRefs(p) {
   return apiPartToVM(p, brand, cat?.nameEn ?? p.categoryId, cat?.nameAr ?? "");
 }
 
-// Same relative date labels as the mock's buildMovements
-function relDateFactory(dates) {
-  const unique = [...new Set(dates)].sort();
-  const first = unique[unique.length - 1];
-  const second = unique[unique.length - 2];
-  return (d) => (d === first ? "today" : d === second ? "yesterday" : d.slice(5));
-}
-
 export async function getMovements() {
   const [movements, parts] = await Promise.all([api("/api/movements"), api("/api/parts")]);
   const byId = Object.fromEntries(parts.map((p) => [p.id, p]));
-  const relDate = relDateFactory(movements.map((m) => m.date));
-  return [...movements]
-    .sort((a, b) => (a.date < b.date ? 1 : -1))
-    .map((m) => {
-      const p = byId[m.partId];
-      return {
-        id: m.id,
-        date: relDate(m.date),
-        type: (m.type ?? "").toLowerCase(),
-        qty: m.qty,
-        ref: m.ref ?? "",
-        name: p ? p.nameEn : m.partId,
-        nameAr: p ? p.nameAr : "",
-        part: p ? p.oem : "—",
-      };
-    });
+  return movements.map(m => movementToVM(m, byId[m.partId]));
 }
 
 export async function recordStockIn({ partId, qty, ref }) {

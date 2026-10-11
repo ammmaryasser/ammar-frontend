@@ -43,7 +43,7 @@ export default function MovementModal({ kind, parts, onClose, onSaved }) {
       }
       onSaved();
     } catch (err) {
-      setError(err.message);
+      setError(err.field ? `${err.field}: ${err.message}` : err.message);
     } finally {
       setSaving(false);
     }

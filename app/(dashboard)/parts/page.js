@@ -1,6 +1,8 @@
 "use client";
+import {useResource} from "@/lib/useResource";
+import ResourceState from "@/components/ui/ResourceState";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   Plus,
@@ -12,7 +14,8 @@ import {
 } from "lucide-react";
 import { useLang } from "@/contexts/LanguageContext";
 import { formatNum } from "@/lib/format";
-import { brandNames, categoryOptions, stockStatus } from "@/lib/data";
+import {stockStatus} from "@/lib/api";
+import {useReferences} from "@/lib/reference";
 import { getParts, deletePart } from "@/services/partsService";
 import PartImage from "@/components/app/PartImage";
 import StatusBadge from "@/components/app/StatusBadge";
@@ -29,8 +32,12 @@ export default function PartsPage() {
   const { t, isAr } = useLang();
   const router = useRouter();
 
-  const [parts, setParts] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const {data, loading, error, reload: load} = useResource(getParts);
+  const parts = useMemo(() => data ?? [], [data]);
+  const refs = useReferences();
+  const {brandNames, categoryOptions} = refs;
+  const [deleteError, setDeleteError] = useState(null);
+  const [deleting, setDeleting] = useState(false);
   const [q, setQ] = useState("");
   const [brand, setBrand] = useState("");
   const [category, setCategory] = useState("");
@@ -39,14 +46,6 @@ export default function PartsPage() {
   const [modal, setModal] = useState({ open: false, part: null });
   const [confirmDel, setConfirmDel] = useState(null);
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    setParts(await getParts());
-    setLoading(false);
-  }, []);
-  useEffect(() => {
-    load();
-  }, [load]);
 
   const filtered = useMemo(
     () =>
@@ -67,21 +66,22 @@ export default function PartsPage() {
     [parts, q, brand, category, status],
   );
 
-  useEffect(() => {
-    setPage(1);
-  }, [q, brand, category, status]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
-  const current = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  const visiblePage = Math.min(page, totalPages);
+  const current = filtered.slice((visiblePage - 1) * PAGE_SIZE, visiblePage * PAGE_SIZE);
   const hasFilters = q || brand || category || status;
 
   async function onDelete() {
-    await deletePart(confirmDel.id);
-    setConfirmDel(null);
-    load();
+    if (!confirmDel || deleting) return;
+    setDeleteError(null); setDeleting(true);
+    try { await deletePart(confirmDel.id); setConfirmDel(null); await load(); }
+    catch (e) { setDeleteError(e); }
+    finally {setDeleting(false);}
   }
 
   const clearFilters = () => {
+    setPage(1);
     setQ("");
     setBrand("");
     setCategory("");
@@ -90,6 +90,7 @@ export default function PartsPage() {
 
   return (
     <div className="space-y-5 max-w-[1400px]">
+      <ResourceState error={error || refs.error} retry={() => {load(); refs.reload();}}/>
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -117,13 +118,13 @@ export default function PartsPage() {
           />
           <input
             value={q}
-            onChange={(e) => setQ(e.target.value)}
+            onChange={(e) => {setQ(e.target.value); setPage(1);}}
             placeholder={t("searchPlaceholder")}
             className="w-full h-9 ps-9 pe-3 rounded-md bg-bg border border-line text-sm placeholder:text-muted focus:outline-none focus:border-accent"
           />
         </div>
         <div className="relative">
-          <select value={brand} onChange={(e) => setBrand(e.target.value)} className={selectCls}>
+          <select value={brand} onChange={(e) => {setBrand(e.target.value); setPage(1);}} className={selectCls}>
             <option value="">{t("allBrands")}</option>
             {brandNames.map((b) => (
               <option key={b} value={b}>{b}</option>
@@ -132,7 +133,7 @@ export default function PartsPage() {
           <ChevronDown size={14} className="absolute end-2.5 top-1/2 -translate-y-1/2 text-muted pointer-events-none" />
         </div>
         <div className="relative">
-          <select value={category} onChange={(e) => setCategory(e.target.value)} className={selectCls}>
+          <select value={category} onChange={(e) => {setCategory(e.target.value); setPage(1);}} className={selectCls}>
             <option value="">{t("allCategories")}</option>
             {categoryOptions.map((c) => (
               <option key={c.value} value={c.value}>
@@ -143,7 +144,7 @@ export default function PartsPage() {
           <ChevronDown size={14} className="absolute end-2.5 top-1/2 -translate-y-1/2 text-muted pointer-events-none" />
         </div>
         <div className="relative">
-          <select value={status} onChange={(e) => setStatus(e.target.value)} className={selectCls}>
+          <select value={status} onChange={(e) => {setStatus(e.target.value); setPage(1);}} className={selectCls}>
             <option value="">{t("allStatuses")}</option>
             <option value="ok">{t("inStock")}</option>
             <option value="low">{t("low")}</option>
@@ -267,7 +268,7 @@ export default function PartsPage() {
         {!loading && current.length > 0 && (
           <div className="border-t border-line">
             <Pagination
-              page={page}
+              page={visiblePage}
               pageSize={PAGE_SIZE}
               total={filtered.length}
               onPage={setPage}
@@ -288,10 +289,11 @@ export default function PartsPage() {
       />
       <Modal
         open={!!confirmDel}
-        onClose={() => setConfirmDel(null)}
+        onClose={() => {if (!deleting) {setConfirmDel(null);setDeleteError(null);}}}
         title={t("confirmDelete")}
       >
         <div className="p-5">
+          <ResourceState error={deleteError}/>
           <p className="text-sm text-muted">{t("confirmDeleteMsg")}</p>
           {confirmDel && (
             <div className="mt-3 font-mono text-xs text-muted">
@@ -301,12 +303,13 @@ export default function PartsPage() {
         </div>
         <div className="flex justify-end gap-2 px-5 py-4 border-t border-line">
           <button
-            onClick={() => setConfirmDel(null)}
+            disabled={deleting} onClick={() => {setConfirmDel(null);setDeleteError(null);}}
             className="h-9 px-4 rounded-md border border-line text-sm hover:bg-hover transition-colors"
           >
             {t("cancel")}
           </button>
           <button
+            disabled={deleting}
             onClick={onDelete}
             className="h-9 px-4 rounded-md bg-bad text-white text-sm font-medium hover:opacity-90 transition-opacity"
           >

@@ -1,5 +1,6 @@
 import { IBM_Plex_Sans, IBM_Plex_Mono, IBM_Plex_Sans_Arabic } from "next/font/google";
 import "./globals.css";
+import {AuthProvider} from "@/contexts/AuthContext";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 import { LanguageProvider } from "@/contexts/LanguageContext";
 
@@ -38,7 +39,7 @@ export default function RootLayout({ children }) {
     >
       <body className="min-h-full">
         <ThemeProvider>
-          <LanguageProvider>{children}</LanguageProvider>
+          <LanguageProvider><AuthProvider>{children}</AuthProvider></LanguageProvider>
         </ThemeProvider>
       </body>
     </html>

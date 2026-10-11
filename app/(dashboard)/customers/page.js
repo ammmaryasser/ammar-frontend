@@ -1,6 +1,8 @@
 "use client";
+import {useResource} from "@/lib/useResource";
+import ResourceState from "@/components/ui/ResourceState";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { Plus, Phone, Car, Search } from "lucide-react";
 import Modal from "@/components/ui/Modal";
 import { useLang } from "@/contexts/LanguageContext";
@@ -11,25 +13,16 @@ import { getSales } from "@/services/salesService";
 const inputCls =
   "w-full h-9 px-3 rounded-md bg-bg border border-line text-sm placeholder:text-muted focus:outline-none focus:border-accent";
 
+const loadCustomers = () => Promise.all([getCustomers(), getSales()]);
+
 export default function CustomersPage() {
   const { t } = useLang();
-  const [customers, setCustomers] = useState([]);
-  const [sales, setSales] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const {data, loading, error, reload: load} = useResource(loadCustomers);
+  const [customers, sales] = data ?? [[], []];
   const [q, setQ] = useState("");
   const [addOpen, setAddOpen] = useState(false);
   const [detail, setDetail] = useState(null);
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    const [cs, ss] = await Promise.all([getCustomers(), getSales()]);
-    setCustomers(cs);
-    setSales(ss);
-    setLoading(false);
-  }, []);
-  useEffect(() => {
-    load();
-  }, [load]);
 
   const filtered = useMemo(() => {
     const needle = q.trim().toLowerCase();
@@ -44,6 +37,7 @@ export default function CustomersPage() {
 
   return (
     <div className="space-y-5 max-w-[1400px]">
+      <ResourceState error={error} retry={load}/>
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -203,11 +197,12 @@ function AddCustomerModal({ onClose, onSaved }) {
   const { t } = useLang();
   const [form, setForm] = useState({ name: "", phone: "", car: "", notes: "" });
   const [error, setError] = useState("");
+  const [errorField, setErrorField] = useState(null);
   const [saving, setSaving] = useState(false);
 
   async function onSubmit(e) {
     e.preventDefault();
-    setError("");
+    setError(""); setErrorField(null);
     if (!form.name.trim()) {
       setError(t("customerNameRequired"));
       return;
@@ -217,7 +212,7 @@ function AddCustomerModal({ onClose, onSaved }) {
       await createCustomer(form);
       onSaved();
     } catch (err) {
-      setError(err.message);
+      setError(err.message); setErrorField(err.field);
     } finally {
       setSaving(false);
     }
@@ -232,6 +227,7 @@ function AddCustomerModal({ onClose, onSaved }) {
               {t("customerName")} *
             </label>
             <input
+              aria-label={t("customerName")} aria-invalid={errorField === "name"}
               value={form.name}
               onChange={(e) => setForm({ ...form, name: e.target.value })}
               className={inputCls}
@@ -241,7 +237,8 @@ function AddCustomerModal({ onClose, onSaved }) {
             <div>
               <label className="block text-xs font-medium text-muted mb-1.5">{t("phone")}</label>
               <input
-                value={form.phone}
+                aria-label={t("phone")} aria-invalid={errorField === "phone"}
+              value={form.phone}
                 onChange={(e) => setForm({ ...form, phone: e.target.value })}
                 placeholder="01xx xxx xxxx"
                 className={`${inputCls} font-mono`}
@@ -252,7 +249,8 @@ function AddCustomerModal({ onClose, onSaved }) {
                 {t("customerCar")}
               </label>
               <input
-                value={form.car}
+                aria-label={t("customerCar")} aria-invalid={errorField === "car"}
+              value={form.car}
                 onChange={(e) => setForm({ ...form, car: e.target.value })}
                 placeholder={t("customerCarPh")}
                 className={inputCls}
@@ -262,6 +260,7 @@ function AddCustomerModal({ onClose, onSaved }) {
           <div>
             <label className="block text-xs font-medium text-muted mb-1.5">{t("notes")}</label>
             <textarea
+              aria-label={t("notes")} aria-invalid={errorField === "notes"}
               value={form.notes}
               onChange={(e) => setForm({ ...form, notes: e.target.value })}
               rows={2}

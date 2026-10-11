@@ -1,5 +1,7 @@
 "use client";
 
+import {useState} from "react";
+import {useAuth} from "@/contexts/AuthContext";
 import { useRouter } from "next/navigation";
 import { Search, Sun, Moon, Languages, ShoppingCart } from "lucide-react";
 import { useLang } from "@/contexts/LanguageContext";
@@ -9,6 +11,10 @@ export default function Topbar() {
   const { t, toggle: toggleLang } = useLang();
   const { theme, toggle: toggleTheme } = useTheme();
   const router = useRouter();
+  const {signOut} = useAuth();
+  const {isAr} = useLang();
+  const [logoutError, setLogoutError] = useState(null);
+  const [loggingOut, setLoggingOut] = useState(false);
 
   return (
     <header className="sticky top-0 z-20 h-16 flex items-center gap-3 px-4 md:px-8 bg-surface border-b border-line">
@@ -38,6 +44,11 @@ export default function Topbar() {
         <span className="hidden sm:inline">{t("newSale")}</span>
       </button>
 
+      <button disabled={loggingOut} onClick={async () => {
+        setLoggingOut(true); setLogoutError(null);
+        try { await signOut(); } catch (e) { setLogoutError(e.message); } finally { setLoggingOut(false); }
+      }} className="border border-line rounded px-2 py-2 text-sm">{isAr ? "خروج" : "Sign out"}</button>
+      {logoutError && <span role="alert" className="text-xs text-bad">{logoutError}</span>}
       {/* Language */}
       <button
         onClick={toggleLang}

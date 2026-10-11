@@ -1,6 +1,8 @@
 "use client";
+import {useResource} from "@/lib/useResource";
+import ResourceState from "@/components/ui/ResourceState";
 
-import { useCallback, useEffect, useState } from "react";
+import {useMemo, useState} from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import {
@@ -13,7 +15,7 @@ import {
 } from "lucide-react";
 import { useLang } from "@/contexts/LanguageContext";
 import { formatEGP, formatNum } from "@/lib/format";
-import { stockStatus } from "@/lib/data";
+import { stockStatus } from "@/lib/api";
 import { getPart, deletePart } from "@/services/partsService";
 import PartImage from "@/components/app/PartImage";
 import StatusBadge from "@/components/app/StatusBadge";
@@ -35,20 +37,15 @@ export default function PartDetailPage() {
   const { id } = useParams();
   const router = useRouter();
 
-  const [part, setPart] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const loader = useMemo(() => () => getPart(id), [id]);
+  const {data: part, loading, error, reload: load} = useResource(loader);
+  const [deleteError, setDeleteError] = useState(null);
+  const [deleting, setDeleting] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [confirmDel, setConfirmDel] = useState(false);
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    setPart(await getPart(id));
-    setLoading(false);
-  }, [id]);
-  useEffect(() => {
-    load();
-  }, [load]);
 
+  if (error) return <ResourceState error={error} retry={load}/>;
   if (loading)
     return (
       <div className="max-w-[1400px] space-y-4">
@@ -75,6 +72,7 @@ export default function PartDetailPage() {
 
   return (
     <div className="space-y-5 max-w-[1400px]">
+
       {/* Back + actions */}
       <div className="flex items-center justify-between">
         <Link
@@ -171,7 +169,7 @@ export default function PartDetailPage() {
             <h2 className="text-sm font-semibold">{t("stockLog")}</h2>
             <ul className="mt-3 divide-y divide-line">
               {(part.history || []).map((h, i) => {
-                const Icon = logIcon[h.type];
+                const Icon = logIcon[h.type] || RefreshCcw;
                 const positive =
                   h.type === "in" || (h.type === "adj" && h.qty > 0);
                 return (
@@ -237,10 +235,11 @@ export default function PartDetailPage() {
       />
       <Modal
         open={confirmDel}
-        onClose={() => setConfirmDel(false)}
+        onClose={() => {if (!deleting) {setConfirmDel(false);setDeleteError(null);}}}
         title={t("confirmDelete")}
       >
         <div className="p-5">
+          <ResourceState error={deleteError}/>
           <p className="text-sm text-muted">{t("confirmDeleteMsg")}</p>
           <div className="mt-3 font-mono text-xs text-muted">
             {part.oem} · {isAr ? part.nameAr : part.name}
@@ -248,15 +247,16 @@ export default function PartDetailPage() {
         </div>
         <div className="flex justify-end gap-2 px-5 py-4 border-t border-line">
           <button
-            onClick={() => setConfirmDel(false)}
+            disabled={deleting} onClick={() => {setConfirmDel(false);setDeleteError(null);}}
             className="h-9 px-4 rounded-md border border-line text-sm hover:bg-hover transition-colors"
           >
             {t("cancel")}
           </button>
           <button
+            disabled={deleting}
             onClick={async () => {
-              await deletePart(part.id);
-              router.push("/parts");
+              setDeleting(true);setDeleteError(null);
+              try { await deletePart(part.id); router.push("/parts"); } catch (e) { setDeleteError(e); } finally {setDeleting(false);}
             }}
             className="h-9 px-4 rounded-md bg-bad text-white text-sm font-medium hover:opacity-90 transition-opacity"
           >

@@ -1,5 +1,6 @@
 "use client";
 
+import ResourceState from "@/components/ui/ResourceState";
 import { useState } from "react";
 import Link from "next/link";
 import { ArrowLeft, Printer } from "lucide-react";
@@ -12,7 +13,7 @@ import { formatEGP, formatNum } from "@/lib/format";
 // documents must stay light regardless of app theme and print correctly.
 export default function PrintDocument({ type, sale }) {
   const { lang: appLang } = useLang();
-  const shop = useShopSettings();
+  const {data: shop, loading, error, reload} = useShopSettings();
   const [docLang, setDocLang] = useState(appLang);
   const isInvoice = type === "invoice";
   const dt = (k) => dict[docLang]?.[k] ?? k;
@@ -20,6 +21,7 @@ export default function PrintDocument({ type, sale }) {
   const docNo = isInvoice ? sale.id : sale.id.replace("INV", "QTN");
   const total = sale.items.reduce((s, it) => s + it.qty * it.unitPrice, 0);
 
+  if (loading || error) return <ResourceState loading={loading} error={error} retry={reload}/>;
   return (
     <div
       dir={isAr ? "rtl" : "ltr"}

@@ -1,3 +1,5 @@
+> Historical planning notes. Current behavior is specified in [API_CONTRACT.md](API_CONTRACT.md). See the backend IMPLEMENTATION_STATUS.md for implemented repairs and pending operational verification.
+
 # AMAR YASSER — Backend Plan & Handoff Document
 
 **Target stack:** Java 21 · Spring Boot 3.5.x · PostgreSQL 16 · Flyway · Maven

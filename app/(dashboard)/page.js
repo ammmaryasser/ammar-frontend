@@ -13,7 +13,15 @@ import {
 } from "lucide-react";
 import { useLang } from "@/contexts/LanguageContext";
 import { formatEGP, formatNum } from "@/lib/format";
-import { parts, movements, kpis, stockStatus } from "@/lib/data";
+import {api, stockStatus} from "@/lib/api";
+import {getParts} from "@/services/partsService";
+import {getMovements} from "@/services/movementsService";
+import {useResource} from "@/lib/useResource";
+import ResourceState from "@/components/ui/ResourceState";
+const loadDashboard = async () => {
+  const [kpis, parts, movements] = await Promise.all([api("/api/dashboard/summary"), getParts(), getMovements()]);
+  return {kpis, parts, movements: movements.slice(0, 8)};
+};
 
 function KpiCard({ icon: Icon, label, value, sub, tone }) {
   return (
@@ -59,6 +67,9 @@ function StatusBadge({ status, t }) {
 export default function DashboardPage() {
   const { t, isAr } = useLang();
 
+  const {data, loading, error, reload} = useResource(loadDashboard);
+  if (loading || error) return <ResourceState loading={loading} error={error} retry={reload}/>;
+  const {parts, movements, kpis} = data;
   const lowStockParts = parts
     .filter((p) => stockStatus(p) !== "ok")
     .sort((a, b) => a.qty - b.qty);
@@ -80,7 +91,7 @@ export default function DashboardPage() {
       <div>
         <h1 className="text-xl font-semibold tracking-tight">{t("dashboard")}</h1>
         <p className="text-sm text-muted mt-0.5">
-          {formatNum(1847)} {t("partsOnHand")} · {kpis.lowStock}{" "}
+          {formatNum(kpis.partsOnHand)} {t("partsOnHand")} · {kpis.lowStock}{" "}
           {t("needAttention")}
         </p>
       </div>
@@ -91,7 +102,7 @@ export default function DashboardPage() {
           icon={Boxes}
           label={t("stockValue")}
           value={formatEGP(kpis.stockValue)}
-          sub={`+${kpis.stockDelta}% ${t("vsLastMonth")}`}
+          sub=""
         />
         <KpiCard
           icon={Banknote}
@@ -103,7 +114,7 @@ export default function DashboardPage() {
           icon={TrendingUp}
           label={t("profitThisMonth")}
           value={formatEGP(kpis.monthProfit)}
-          sub={`+${kpis.profitDelta}% ${t("vsLastMonth")}`}
+          sub=""
         />
         <KpiCard
           icon={TriangleAlert}
@@ -174,7 +185,7 @@ export default function DashboardPage() {
           </div>
           <ul className="mt-4 divide-y divide-line">
             {movements.map((m) => {
-              const Icon = movementIcon[m.type];
+              const Icon = movementIcon[m.type] || RefreshCcw;
               const positive =
                 m.type === "in" || (m.type === "adj" && m.qty > 0);
               return (

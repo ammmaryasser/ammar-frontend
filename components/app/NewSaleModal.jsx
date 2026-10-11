@@ -1,6 +1,9 @@
 "use client";
+import {useResource} from "@/lib/useResource";
+import ResourceState from "@/components/ui/ResourceState";
+const loadSaleOptions = () => Promise.all([getParts(), getCustomers()]);
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { Plus, Trash2, Search } from "lucide-react";
 import Modal from "@/components/ui/Modal";
 import { useLang } from "@/contexts/LanguageContext";
@@ -13,10 +16,11 @@ const inputCls =
   "w-full h-9 px-3 rounded-md bg-bg border border-line text-sm placeholder:text-muted focus:outline-none focus:border-accent";
 const labelCls = "block text-xs font-medium text-muted mb-1.5";
 
-export default function NewSaleModal({ open, onClose, onSaved }) {
+export default function NewSaleModal(props) {return props.open ? <SaleForm {...props}/> : null;}
+function SaleForm({open, onClose, onSaved}) {
   const { t, isAr } = useLang();
-  const [parts, setParts] = useState([]);
-  const [customers, setCustomers] = useState([]);
+  const {data, loading, error: loadError, reload} = useResource(loadSaleOptions);
+  const [parts, customers] = data ?? [[], []];
   const [customerId, setCustomerId] = useState("");
   const [newCustomer, setNewCustomer] = useState(false);
   const [cForm, setCForm] = useState({ name: "", phone: "", car: "" });
@@ -24,18 +28,6 @@ export default function NewSaleModal({ open, onClose, onSaved }) {
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
 
-  useEffect(() => {
-    if (!open) return;
-    setError("");
-    setItems([{ partId: "", qty: 1 }]);
-    setNewCustomer(false);
-    setCForm({ name: "", phone: "", car: "" });
-    Promise.all([getParts(), getCustomers()]).then(([ps, cs]) => {
-      setParts(ps);
-      setCustomers(cs);
-      setCustomerId(cs[0]?.id ?? "");
-    });
-  }, [open]);
 
   const inStock = useMemo(() => parts.filter((p) => p.qty > 0), [parts]);
   const partMap = useMemo(() => Object.fromEntries(parts.map((p) => [p.id, p])), [parts]);
@@ -62,10 +54,10 @@ export default function NewSaleModal({ open, onClose, onSaved }) {
     }
     setSaving(true);
     try {
-      let cid = customerId;
+      let cid = customerId || customers[0]?.id || "";
       if (newCustomer) {
         const c = await createCustomer(cForm);
-        cid = c.id;
+        cid = c.id; setCustomerId(c.id); setNewCustomer(false);
       }
       await createSale({ customerId: cid, items: valid });
       onSaved();
@@ -78,6 +70,7 @@ export default function NewSaleModal({ open, onClose, onSaved }) {
 
   return (
     <Modal open={open} onClose={onClose} title={t("newSale")} wide>
+      <ResourceState loading={loading} error={loadError} retry={reload}/>
       <form onSubmit={onSubmit}>
         <div className="p-5 space-y-4">
           {/* Customer */}
@@ -108,8 +101,8 @@ export default function NewSaleModal({ open, onClose, onSaved }) {
                   </div>
                 </div>
               ) : (
-                <select
-                  value={customerId}
+                <select aria-label={t("customer")} data-testid="sale-customer"
+                  value={customerId || customers[0]?.id || ""}
                   onChange={(e) => setCustomerId(e.target.value)}
                   className={inputCls}
                 >
@@ -149,7 +142,7 @@ export default function NewSaleModal({ open, onClose, onSaved }) {
                         size={13}
                         className="absolute start-2.5 top-1/2 -translate-y-1/2 text-muted pointer-events-none"
                       />
-                      <select
+                      <select aria-label={t("part")} data-testid={`sale-part-${i}`}
                         value={it.partId}
                         onChange={(e) => setItem(i, "partId", e.target.value)}
                         className={`${inputCls} ps-8`}
@@ -162,7 +155,7 @@ export default function NewSaleModal({ open, onClose, onSaved }) {
                         ))}
                       </select>
                     </div>
-                    <input
+                    <input aria-label={t("quantity")} data-testid={`sale-qty-${i}`}
                       type="number"
                       min="1"
                       max={p ? p.qty : undefined}
@@ -213,7 +206,7 @@ export default function NewSaleModal({ open, onClose, onSaved }) {
           </button>
           <button
             type="submit"
-            disabled={saving}
+            disabled={saving || loading || !!loadError}
             className="h-9 px-4 rounded-md bg-accent text-accent-ink text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-50"
           >
             {saving ? t("saving") : t("completeSale")}

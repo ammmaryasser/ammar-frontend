@@ -1,6 +1,8 @@
 "use client";
+import {useResource} from "@/lib/useResource";
+import ResourceState from "@/components/ui/ResourceState";
 
-import { useCallback, useEffect, useState } from "react";
+import {useMemo, useState} from "react";
 import { Banknote, TrendingUp, FileText, Boxes } from "lucide-react";
 import { useLang } from "@/contexts/LanguageContext";
 import { formatEGP, formatNum } from "@/lib/format";
@@ -15,22 +17,15 @@ const RANGES = [
 export default function ReportsPage() {
   const { t } = useLang();
   const [range, setRange] = useState("month");
-  const [report, setReport] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const loader = useMemo(() => () => getReport(range), [range]);
+  const {data: report, loading, error, reload: load} = useResource(loader);
 
-  const load = useCallback(async (r) => {
-    setLoading(true);
-    setReport(await getReport(r));
-    setLoading(false);
-  }, []);
-  useEffect(() => {
-    load(range);
-  }, [load, range]);
 
   const empty = !loading && report && report.invoices === 0;
 
   return (
     <div className="space-y-5 max-w-[1400px]">
+      <ResourceState error={error} retry={load}/>
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>

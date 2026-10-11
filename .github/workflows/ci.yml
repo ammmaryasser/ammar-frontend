@@ -1,0 +1,65 @@
+name: Frontend verification
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      backend_ref:
+        description: Matching backend branch, tag or commit
+        required: true
+        default: main
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - run: npm run lint
+      - run: npm run build
+  full-stack:
+    if: github.event_name == 'workflow_dispatch'
+    needs: verify
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: ammmaryasser/amar-backend
+          ref: ${{ inputs.backend_ref }}
+          path: matching-backend
+          token: ${{ secrets.CROSS_REPO_TOKEN || github.token }}
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+          cache-dependency-path: matching-backend/pom.xml
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci && npx playwright install --with-deps chromium
+      - run: ./matching-backend/scripts/acceptance.ps1 -FrontendDirectory .
+        shell: pwsh
+      - run: docker build -t amar-backend:acceptance ./matching-backend
+      - run: docker build -t amar-frontend:acceptance .
+      - run: ./matching-backend/scripts/production-check.ps1
+        shell: pwsh
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: full-stack-evidence
+          path: |
+            playwright-report
+            test-results
+            matching-backend/target/surefire-reports
+            matching-backend/target/site/jacoco
+            matching-backend/target/acceptance-app*.log
+            matching-backend/target/acceptance-backups

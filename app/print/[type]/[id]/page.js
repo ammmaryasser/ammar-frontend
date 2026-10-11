@@ -1,6 +1,8 @@
 "use client";
+import {useResource} from "@/lib/useResource";
+import ResourceState from "@/components/ui/ResourceState";
 
-import { useEffect, useState } from "react";
+import {useMemo} from "react";
 import { useParams } from "next/navigation";
 import PrintDocument from "@/components/app/PrintDocument";
 import { useLang } from "@/contexts/LanguageContext";
@@ -11,16 +13,9 @@ import { getSaleById } from "@/services/salesService";
 export default function PrintDocPage() {
   const { type, id } = useParams();
   const { t } = useLang();
-  const [sale, setSale] = useState(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    setLoading(true);
-    getSaleById(id).then((s) => {
-      setSale(s);
-      setLoading(false);
-    });
-  }, [id]);
+  const loader = useMemo(() => () => getSaleById(id), [id]);
+  const {data: sale, loading, error, reload} = useResource(loader);
+  if (error) return <ResourceState error={error} retry={reload}/>;
 
   if (loading) {
     return (

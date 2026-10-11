@@ -1,6 +1,8 @@
 "use client";
+import {useResource} from "@/lib/useResource";
+import ResourceState from "@/components/ui/ResourceState";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { ArrowDownLeft, ArrowUpRight, RefreshCcw, PackagePlus, SlidersHorizontal } from "lucide-react";
 import { useLang } from "@/contexts/LanguageContext";
 import { formatNum } from "@/lib/format";
@@ -14,24 +16,15 @@ const typeMeta = {
   adj: { icon: RefreshCcw, tone: "text-warn", bg: "bg-warn-bg", label: "mAdj" },
 };
 
+const loadMovements = () => Promise.all([getMovements(), getParts()]);
+
 export default function MovementsPage() {
   const { t, isAr } = useLang();
-  const [movements, setMovements] = useState([]);
-  const [parts, setParts] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const {data, loading, error, reload: load} = useResource(loadMovements);
+  const [movements, parts] = data ?? [[], []];
   const [filter, setFilter] = useState("");
   const [modal, setModal] = useState(null); // "in" | "adj"
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    const [ms, ps] = await Promise.all([getMovements(), getParts()]);
-    setMovements(ms);
-    setParts(ps);
-    setLoading(false);
-  }, []);
-  useEffect(() => {
-    load();
-  }, [load]);
 
   const filtered = useMemo(
     () => movements.filter((m) => !filter || m.type === filter),
@@ -40,6 +33,7 @@ export default function MovementsPage() {
 
   return (
     <div className="space-y-5 max-w-[1400px]">
+      <ResourceState error={error} retry={load}/>
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -116,7 +110,7 @@ export default function MovementsPage() {
                     </tr>
                   ))
                 : filtered.map((m) => {
-                    const meta = typeMeta[m.type];
+                    const meta = typeMeta[m.type] || {icon: RefreshCcw, tone: "text-muted", bg: "bg-bg", label: "unknown"};
                     const Icon = meta.icon;
                     const positive = m.type === "in" || (m.type === "adj" && m.qty > 0);
                     return (
